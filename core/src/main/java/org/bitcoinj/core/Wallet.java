@@ -3648,8 +3648,9 @@ public class Wallet extends BaseTaggableObject
             return toCLTVPaymentChannel(params, BigInteger.valueOf(time), from, to, value);
         }
 
-        public static SendRequest toCLTVPaymentChannel(NetworkParameters params, long lockTime, ECKey from, ECKey to, Coin value) {
-            return toCLTVPaymentChannel(params, BigInteger.valueOf(lockTime), from, to, value);
+        public static SendRequest toCLTVPaymentChannel(NetworkParameters params, int releaseBlock, ECKey from, ECKey to, Coin value) {
+            checkArgument(0 <= releaseBlock && releaseBlock < Transaction.LOCKTIME_THRESHOLD, "Block number was too large");
+            return toCLTVPaymentChannel(params, BigInteger.valueOf(releaseBlock), from, to, value);
         }
 
         private static SendRequest toCLTVPaymentChannel(NetworkParameters params, BigInteger time, ECKey from, ECKey to, Coin value) {
