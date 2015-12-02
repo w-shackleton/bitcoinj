@@ -41,4 +41,5 @@ message StoredServerPaymentChannel {
 	required bytes contractTransaction = 4;
 	required bytes clientOutput = 5;
 	required bytes myKey = 6;
+	required uint32 majorVersion = 7;
 }

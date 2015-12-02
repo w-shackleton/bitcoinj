@@ -761,6 +761,15 @@ public final class ServerState {
      * <code>required bytes myKey = 6;</code>
      */
     com.google.protobuf.ByteString getMyKey();
+
+    /**
+     * <code>required uint32 majorVersion = 7;</code>
+     */
+    boolean hasMajorVersion();
+    /**
+     * <code>required uint32 majorVersion = 7;</code>
+     */
+    int getMajorVersion();
   }
   /**
    * Protobuf type {@code paymentchannels.StoredServerPaymentChannel}
@@ -846,6 +855,11 @@ public final class ServerState {
             case 50: {
               bitField0_ |= 0x00000020;
               myKey_ = input.readBytes();
+              break;
+            }
+            case 56: {
+              bitField0_ |= 0x00000040;
+              majorVersion_ = input.readUInt32();
               break;
             }
           }
@@ -978,6 +992,21 @@ public final class ServerState {
       return myKey_;
     }
 
+    public static final int MAJORVERSION_FIELD_NUMBER = 7;
+    private int majorVersion_;
+    /**
+     * <code>required uint32 majorVersion = 7;</code>
+     */
+    public boolean hasMajorVersion() {
+      return ((bitField0_ & 0x00000040) == 0x00000040);
+    }
+    /**
+     * <code>required uint32 majorVersion = 7;</code>
+     */
+    public int getMajorVersion() {
+      return majorVersion_;
+    }
+
     private void initFields() {
       bestValueToMe_ = 0L;
       bestValueSignature_ = com.google.protobuf.ByteString.EMPTY;
@@ -985,6 +1014,7 @@ public final class ServerState {
       contractTransaction_ = com.google.protobuf.ByteString.EMPTY;
       clientOutput_ = com.google.protobuf.ByteString.EMPTY;
       myKey_ = com.google.protobuf.ByteString.EMPTY;
+      majorVersion_ = 0;
     }
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
@@ -1012,6 +1042,10 @@ public final class ServerState {
         memoizedIsInitialized = 0;
         return false;
       }
+      if (!hasMajorVersion()) {
+        memoizedIsInitialized = 0;
+        return false;
+      }
       memoizedIsInitialized = 1;
       return true;
     }
@@ -1036,6 +1070,9 @@ public final class ServerState {
       }
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         output.writeBytes(6, myKey_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        output.writeUInt32(7, majorVersion_);
       }
       getUnknownFields().writeTo(output);
     }
@@ -1069,6 +1106,10 @@ public final class ServerState {
       if (((bitField0_ & 0x00000020) == 0x00000020)) {
         size += com.google.protobuf.CodedOutputStream
           .computeBytesSize(6, myKey_);
+      }
+      if (((bitField0_ & 0x00000040) == 0x00000040)) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeUInt32Size(7, majorVersion_);
       }
       size += getUnknownFields().getSerializedSize();
       memoizedSerializedSize = size;
@@ -1203,6 +1244,8 @@ public final class ServerState {
         bitField0_ = (bitField0_ & ~0x00000010);
         myKey_ = com.google.protobuf.ByteString.EMPTY;
         bitField0_ = (bitField0_ & ~0x00000020);
+        majorVersion_ = 0;
+        bitField0_ = (bitField0_ & ~0x00000040);
         return this;
       }
 
@@ -1255,6 +1298,10 @@ public final class ServerState {
           to_bitField0_ |= 0x00000020;
         }
         result.myKey_ = myKey_;
+        if (((from_bitField0_ & 0x00000040) == 0x00000040)) {
+          to_bitField0_ |= 0x00000040;
+        }
+        result.majorVersion_ = majorVersion_;
         result.bitField0_ = to_bitField0_;
         onBuilt();
         return result;
@@ -1289,6 +1336,9 @@ public final class ServerState {
         if (other.hasMyKey()) {
           setMyKey(other.getMyKey());
         }
+        if (other.hasMajorVersion()) {
+          setMajorVersion(other.getMajorVersion());
+        }
         this.mergeUnknownFields(other.getUnknownFields());
         return this;
       }
@@ -1311,6 +1361,10 @@ public final class ServerState {
           return false;
         }
         if (!hasMyKey()) {
+          
+          return false;
+        }
+        if (!hasMajorVersion()) {
           
           return false;
         }
@@ -1540,6 +1594,38 @@ public final class ServerState {
         return this;
       }
 
+      private int majorVersion_ ;
+      /**
+       * <code>required uint32 majorVersion = 7;</code>
+       */
+      public boolean hasMajorVersion() {
+        return ((bitField0_ & 0x00000040) == 0x00000040);
+      }
+      /**
+       * <code>required uint32 majorVersion = 7;</code>
+       */
+      public int getMajorVersion() {
+        return majorVersion_;
+      }
+      /**
+       * <code>required uint32 majorVersion = 7;</code>
+       */
+      public Builder setMajorVersion(int value) {
+        bitField0_ |= 0x00000040;
+        majorVersion_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>required uint32 majorVersion = 7;</code>
+       */
+      public Builder clearMajorVersion() {
+        bitField0_ = (bitField0_ & ~0x00000040);
+        majorVersion_ = 0;
+        onChanged();
+        return this;
+      }
+
       // @@protoc_insertion_point(builder_scope:paymentchannels.StoredServerPaymentChannel)
     }
 
@@ -1573,13 +1659,14 @@ public final class ServerState {
       "\n storedserverpaymentchannel.proto\022\017paym" +
       "entchannels\"\\\n\033StoredServerPaymentChanne" +
       "ls\022=\n\010channels\030\001 \003(\0132+.paymentchannels.S" +
-      "toredServerPaymentChannel\"\272\001\n\032StoredServ" +
+      "toredServerPaymentChannel\"\320\001\n\032StoredServ" +
       "erPaymentChannel\022\025\n\rbestValueToMe\030\001 \002(\004\022" +
       "\032\n\022bestValueSignature\030\002 \001(\014\022\'\n\037refundTra" +
       "nsactionUnlockTimeSecs\030\003 \002(\004\022\033\n\023contract" +
       "Transaction\030\004 \002(\014\022\024\n\014clientOutput\030\005 \002(\014\022" +
-      "\r\n\005myKey\030\006 \002(\014B.\n\037org.bitcoinj.protocols" +
-      ".channelsB\013ServerState"
+      "\r\n\005myKey\030\006 \002(\014\022\024\n\014majorVersion\030\007 \002(\rB.\n\037" +
+      "org.bitcoinj.protocols.channelsB\013ServerS",
+      "tate"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -1604,7 +1691,7 @@ public final class ServerState {
     internal_static_paymentchannels_StoredServerPaymentChannel_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_paymentchannels_StoredServerPaymentChannel_descriptor,
-        new java.lang.String[] { "BestValueToMe", "BestValueSignature", "RefundTransactionUnlockTimeSecs", "ContractTransaction", "ClientOutput", "MyKey", });
+        new java.lang.String[] { "BestValueToMe", "BestValueSignature", "RefundTransactionUnlockTimeSecs", "ContractTransaction", "ClientOutput", "MyKey", "MajorVersion", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)
