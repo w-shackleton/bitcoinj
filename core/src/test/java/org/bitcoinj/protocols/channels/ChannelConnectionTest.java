@@ -204,7 +204,7 @@ public class ChannelConnectionTest extends TestWithWallet {
 
         StoredPaymentChannelServerStates channels = (StoredPaymentChannelServerStates)serverWallet.getExtensions().get(StoredPaymentChannelServerStates.EXTENSION_ID);
         StoredServerChannel storedServerChannel = channels.getChannel(broadcastMultiSig.getHash());
-        PaymentChannelV1ServerState serverState = storedServerChannel.getOrCreateState(serverWallet, mockBroadcaster);
+        PaymentChannelServerState serverState = storedServerChannel.getOrCreateState(serverWallet, mockBroadcaster);
 
         // Check that you can call settle multiple times with no exceptions.
         client.settle();
@@ -212,7 +212,7 @@ public class ChannelConnectionTest extends TestWithWallet {
 
         broadcastTxPause.release();
         Transaction settleTx = broadcasts.take();
-        assertEquals(PaymentChannelV1ServerState.State.CLOSED, serverState.getState());
+        assertTrue(serverState.isClosed());
         if (!serverState.getBestValueToMe().equals(amount) || !serverState.getFeePaid().equals(Coin.ZERO))
             fail();
         assertTrue(channels.mapChannels.isEmpty());

@@ -1,8 +1,11 @@
 package org.bitcoinj.protocols.channels;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import org.bitcoinj.core.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.annotation.Nullable;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -36,7 +39,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * can then begin paying by providing us with signatures for the multi-sig contract which pay some amount back to the
  * client, and the rest is ours to do with as we wish.</p>
  */
-public class PaymentChannelServerState {
+public abstract class PaymentChannelServerState {
     private static final Logger log = LoggerFactory.getLogger(PaymentChannelServerState.class);
 
     // Package-local for checkArguments in StoredServerChannel
@@ -87,12 +90,25 @@ public class PaymentChannelServerState {
         this.minExpireTime = minExpireTime;
     }
 
+    public abstract int getMajorVersion();
+
+    /**
+     * Returns true if the state machine is in the closed state
+     * @return
+     */
+    public abstract boolean isClosed();
+
     /**
      * Gets the highest payment to ourselves (which we will receive on settle(), not including fees)
      */
     public synchronized Coin getBestValueToMe() {
         return bestValueToMe;
     }
+
+    /**
+     * Gets the fee paid in the final payment transaction (only available if settle() did not throw an exception)
+     */
+    public abstract Coin getFeePaid();
 
     protected synchronized void updateChannelInWallet() {
         if (storedServerChannel != null) {
@@ -102,4 +118,54 @@ public class PaymentChannelServerState {
             channels.updatedChannel(storedServerChannel);
         }
     }
+
+    /**
+     * Stores this channel's state in the wallet as a part of a {@link StoredPaymentChannelServerStates} wallet
+     * extension and keeps it up-to-date each time payment is incremented. This will be automatically removed when
+     * a call to {@link PaymentChannelV1ServerState#close()} completes successfully. A channel may only be stored after it
+     * has fully opened (ie state == State.READY).
+     *
+     * @param connectedHandler Optional {@link PaymentChannelServer} object that manages this object. This will
+     *                         set the appropriate pointer in the newly created {@link StoredServerChannel} before it is
+     *                         committed to wallet. If set, closing the state object will propagate the close to the
+     *                         handler which can then do a TCP disconnect.
+     */
+    public abstract void storeChannelInWallet(@Nullable PaymentChannelServer connectedHandler);
+
+    /**
+     * Called when the client provides the contract. Checks that the contract is valid.
+     *
+     * @param contract The provided contract. Do not mutate this object after this call.
+     * @return A future which completes when the provided multisig contract successfully broadcasts, or throws if the broadcast fails for some reason
+     *         Note that if the network simply rejects the transaction, this future will never complete, a timeout should be used.
+     * @throws VerificationException If the provided multisig contract is not well-formed or does not meet previously-specified parameters
+     */
+    public abstract ListenableFuture<PaymentChannelV1ServerState> provideContract(final Transaction contract) throws VerificationException;
+
+    /**
+     * Called when the client provides us with a new signature and wishes to increment total payment by size.
+     * Verifies the provided signature and only updates values if everything checks out.
+     * If the new refundSize is not the lowest we have seen, it is simply ignored.
+     *
+     * @param refundSize How many satoshis of the original contract are refunded to the client (the rest are ours)
+     * @param signatureBytes The new signature spending the multi-sig contract to a new payment transaction
+     * @throws VerificationException If the signature does not verify or size is out of range (incl being rejected by the network as dust).
+     * @return true if there is more value left on the channel, false if it is now fully used up.
+     */
+    public abstract boolean incrementPayment(Coin refundSize, byte[] signatureBytes) throws VerificationException, ValueOutOfRangeException, InsufficientMoneyException;
+
+    /**
+     * Gets the multisig contract which was used to initialize this channel
+     */
+    public abstract Transaction getContract();
+
+    /**
+     * <p>Closes this channel and broadcasts the highest value payment transaction on the network.</p>
+     *
+     * @return a future which completes when the provided multisig contract successfully broadcasts, or throws if the
+     *         broadcast fails for some reason. Note that if the network simply rejects the transaction, this future
+     *         will never complete, a timeout should be used.
+     * @throws InsufficientMoneyException If the payment tx would have cost more in fees to spend than it is worth.
+     */
+    public abstract ListenableFuture<Transaction> close() throws InsufficientMoneyException;
 }

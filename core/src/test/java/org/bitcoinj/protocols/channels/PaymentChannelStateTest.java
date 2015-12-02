@@ -146,7 +146,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertTrue(wallet.getPendingTransactions().contains(multisigContract));
 
         // Provide the server with the multisig contract and simulate successful propagation/acceptance.
-        serverState.provideMultiSigContract(multisigContract);
+        serverState.provideContract(multisigContract);
         assertEquals(PaymentChannelV1ServerState.State.WAITING_FOR_MULTISIG_ACCEPTANCE, serverState.getState());
         final TxFuturePair pair = broadcasts.take();
         pair.future.set(pair.tx);
@@ -264,7 +264,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertTrue(wallet.getPendingTransactions().contains(multisigContract));
 
         // Provide the server with the multisig contract and simulate successful propagation/acceptance.
-        serverState.provideMultiSigContract(multisigContract);
+        serverState.provideContract(multisigContract);
         assertEquals(PaymentChannelV1ServerState.State.WAITING_FOR_MULTISIG_ACCEPTANCE, serverState.getState());
         final TxFuturePair pop = broadcasts.take();
         pop.future.set(pop.tx);
@@ -418,7 +418,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         multisigContract.clearOutputs();
         multisigContract.addOutput(halfCoin, ScriptBuilder.createMultiSigOutputScript(2, Lists.newArrayList(serverKey, myKey)));
         try {
-            serverState.provideMultiSigContract(multisigContract);
+            serverState.provideContract(multisigContract);
             fail();
         } catch (VerificationException e) {
             assertTrue(e.getMessage().contains("client and server in that order"));
@@ -428,7 +428,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         multisigContract.clearOutputs();
         multisigContract.addOutput(Coin.ZERO, ScriptBuilder.createMultiSigOutputScript(2, Lists.newArrayList(myKey, serverKey)));
         try {
-            serverState.provideMultiSigContract(multisigContract);
+            serverState.provideContract(multisigContract);
             fail();
         } catch (VerificationException e) {
             assertTrue(e.getMessage().contains("zero value"));
@@ -438,13 +438,13 @@ public class PaymentChannelStateTest extends TestWithWallet {
         multisigContract.clearOutputs();
         multisigContract.addOutput(new TransactionOutput(params, multisigContract, halfCoin, new byte[] {0x01}));
         try {
-            serverState.provideMultiSigContract(multisigContract);
+            serverState.provideContract(multisigContract);
             fail();
         } catch (VerificationException e) {}
 
         multisigContract = new Transaction(params, multisigContractSerialized);
-        ListenableFuture<PaymentChannelV1ServerState> multisigStateFuture = serverState.provideMultiSigContract(multisigContract);
-        try { serverState.provideMultiSigContract(multisigContract); fail(); } catch (IllegalStateException e) {}
+        ListenableFuture<PaymentChannelV1ServerState> multisigStateFuture = serverState.provideContract(multisigContract);
+        try { serverState.provideContract(multisigContract); fail(); } catch (IllegalStateException e) {}
         assertEquals(PaymentChannelV1ServerState.State.WAITING_FOR_MULTISIG_ACCEPTANCE, serverState.getState());
         assertFalse(multisigStateFuture.isDone());
         final TxFuturePair pair = broadcasts.take();
@@ -587,7 +587,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelClientState.State.READY, clientState.getState());
 
         // Provide the server with the multisig contract and simulate successful propagation/acceptance.
-        serverState.provideMultiSigContract(multisigContract);
+        serverState.provideContract(multisigContract);
         assertEquals(PaymentChannelV1ServerState.State.WAITING_FOR_MULTISIG_ACCEPTANCE, serverState.getState());
         TxFuturePair pair = broadcasts.take();
         pair.future.set(pair.tx);
@@ -673,7 +673,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertTrue(wallet.getPendingTransactions().contains(multisigContract));
 
         // Provide the server with the multisig contract and simulate successful propagation/acceptance.
-        serverState.provideMultiSigContract(multisigContract);
+        serverState.provideContract(multisigContract);
         assertEquals(PaymentChannelV1ServerState.State.WAITING_FOR_MULTISIG_ACCEPTANCE, serverState.getState());
         TxFuturePair pair = broadcasts.take();
         pair.future.set(pair.tx);
@@ -754,7 +754,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertTrue(wallet.getPendingTransactions().contains(multisigContract));
 
         // Provide the server with the multisig contract and simulate successful propagation/acceptance.
-        serverState.provideMultiSigContract(multisigContract);
+        serverState.provideContract(multisigContract);
         assertEquals(PaymentChannelV1ServerState.State.WAITING_FOR_MULTISIG_ACCEPTANCE, serverState.getState());
         final TxFuturePair pair = broadcasts.take();
         pair.future.set(pair.tx);

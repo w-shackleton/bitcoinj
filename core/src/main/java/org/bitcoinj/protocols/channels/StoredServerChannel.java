@@ -30,6 +30,10 @@ import static com.google.common.base.Preconditions.checkArgument;
  * time approaches.
  */
 public class StoredServerChannel {
+    /**
+     * Channel version number. Currently can only be version 1
+     */
+    int majorVersion;
     Coin bestValueToMe;
     byte[] bestValueSignature;
     long refundTransactionUnlockTimeSecs;
@@ -44,6 +48,7 @@ public class StoredServerChannel {
 
     StoredServerChannel(@Nullable PaymentChannelServerState state, Transaction contract, TransactionOutput clientOutput,
                         long refundTransactionUnlockTimeSecs, ECKey myKey, Coin bestValueToMe, @Nullable byte[] bestValueSignature) {
+        this.majorVersion = state.getMajorVersion();
         this.contract = contract;
         this.clientOutput = clientOutput;
         this.refundTransactionUnlockTimeSecs = refundTransactionUnlockTimeSecs;
@@ -96,8 +101,13 @@ public class StoredServerChannel {
      * @param broadcaster The {@link TransactionBroadcaster} which will be used to broadcast contract/payment transactions.
      */
     public synchronized PaymentChannelServerState getOrCreateState(Wallet wallet, TransactionBroadcaster broadcaster) throws VerificationException {
-        if (state == null)
-            state = new PaymentChannelServerState(this, wallet, broadcaster);
+        if (state == null) {
+            if (majorVersion == 1) {
+                state = new PaymentChannelV1ServerState(this, wallet, broadcaster);
+            } else {
+                throw new IllegalStateException("Invalid version number found");
+            }
+        }
         checkArgument(wallet == state.wallet);
         return state;
     }
@@ -105,12 +115,14 @@ public class StoredServerChannel {
     @Override
     public synchronized String toString() {
         final String newline = String.format(Locale.US, "%n");
-        return String.format(Locale.US, "Stored server channel (%s)%n" +
+        return String.format("Stored server channel (%s)%n" +
+                "    Version:       %d%n" +
                 "    Key:           %s%n" +
                 "    Value to me:   %s%n" +
                 "    Client output: %s%n" +
                 "    Refund unlock: %s (%d unix time)%n" +
                 "    Contract:    %s%n",
+                majorVersion,
                 connectedHandler != null ? "connected" : "disconnected", myKey, bestValueToMe,
                 clientOutput,  new Date(refundTransactionUnlockTimeSecs * 1000), refundTransactionUnlockTimeSecs,
                 contract.toString().replaceAll(newline, newline + "    "));

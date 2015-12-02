@@ -102,11 +102,20 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
         this.state = State.WAITING_FOR_REFUND_TRANSACTION;
     }
 
+    @Override
+    public int getMajorVersion() {
+        return 1;
+    }
+
     /**
      * This object implements a state machine, and this accessor returns which state it's currently in.
      */
     public synchronized State getState() {
         return state;
+    }
+
+    public synchronized boolean isClosed() {
+        return getState() == State.CLOSED;
     }
 
     /**
@@ -160,44 +169,44 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
      * spends this transaction (because we will use it as a base to create payment transactions) as well as output value
      * and form (ie it is a 2-of-2 multisig to the correct keys).
      *
-     * @param multisigContract The provided multisig contract. Do not mutate this object after this call.
+     * @param contract The provided multisig contract. Do not mutate this object after this call.
      * @return A future which completes when the provided multisig contract successfully broadcasts, or throws if the broadcast fails for some reason
      *         Note that if the network simply rejects the transaction, this future will never complete, a timeout should be used.
      * @throws VerificationException If the provided multisig contract is not well-formed or does not meet previously-specified parameters
      */
-    public synchronized ListenableFuture<PaymentChannelV1ServerState> provideMultiSigContract(final Transaction multisigContract) throws VerificationException {
-        checkNotNull(multisigContract);
+    public synchronized ListenableFuture<PaymentChannelV1ServerState> provideContract(final Transaction contract) throws VerificationException {
+        checkNotNull(contract);
         checkState(state == State.WAITING_FOR_MULTISIG_CONTRACT);
         try {
-            multisigContract.verify();
-            this.multisigContract = multisigContract;
-            this.multisigScript = multisigContract.getOutput(0).getScriptPubKey();
+            contract.verify();
+            this.multisigContract = contract;
+            this.multisigScript = contract.getOutput(0).getScriptPubKey();
 
-            // Check that multisigContract's first output is a 2-of-2 multisig to the correct pubkeys in the correct order
+            // Check that contract's first output is a 2-of-2 multisig to the correct pubkeys in the correct order
             final Script expectedScript = ScriptBuilder.createMultiSigOutputScript(2, Lists.newArrayList(clientKey, serverKey));
             if (!Arrays.equals(multisigScript.getProgram(), expectedScript.getProgram()))
                 throw new VerificationException("Multisig contract's first output was not a standard 2-of-2 multisig to client and server in that order.");
 
-            this.totalValue = multisigContract.getOutput(0).getValue();
+            this.totalValue = contract.getOutput(0).getValue();
             if (this.totalValue.signum() <= 0)
                 throw new VerificationException("Not accepting an attempt to open a contract with zero value.");
         } catch (VerificationException e) {
             // We couldn't parse the multisig transaction or its output.
-            log.error("Provided multisig contract did not verify: {}", multisigContract.toString());
+            log.error("Provided multisig contract did not verify: {}", contract.toString());
             throw e;
         }
-        log.info("Broadcasting multisig contract: {}", multisigContract);
+        log.info("Broadcasting multisig contract: {}", contract);
         state = State.WAITING_FOR_MULTISIG_ACCEPTANCE;
         final SettableFuture<PaymentChannelV1ServerState> future = SettableFuture.create();
-        Futures.addCallback(broadcaster.broadcastTransaction(multisigContract).future(), new FutureCallback<Transaction>() {
+        Futures.addCallback(broadcaster.broadcastTransaction(contract).future(), new FutureCallback<Transaction>() {
             @Override public void onSuccess(Transaction transaction) {
                 log.info("Successfully broadcast multisig contract {}. Channel now open.", transaction.getHashAsString());
                 try {
-                    // Manually add the multisigContract to the wallet, overriding the isRelevant checks so we can track
+                    // Manually add the contract to the wallet, overriding the isRelevant checks so we can track
                     // it and check for double-spends later
-                    wallet.receivePending(multisigContract, null, true);
+                    wallet.receivePending(contract, null, true);
                 } catch (VerificationException e) {
-                    throw new RuntimeException(e); // Cannot happen, we already called multisigContract.verify()
+                    throw new RuntimeException(e); // Cannot happen, we already called contract.verify()
                 }
                 state = State.READY;
                 future.set(PaymentChannelV1ServerState.this);
@@ -225,16 +234,7 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
         return Wallet.SendRequest.forTx(tx);
     }
 
-    /**
-     * Called when the client provides us with a new signature and wishes to increment total payment by size.
-     * Verifies the provided signature and only updates values if everything checks out.
-     * If the new refundSize is not the lowest we have seen, it is simply ignored.
-     *
-     * @param refundSize How many satoshis of the original contract are refunded to the client (the rest are ours)
-     * @param signatureBytes The new signature spending the multi-sig contract to a new payment transaction
-     * @throws VerificationException If the signature does not verify or size is out of range (incl being rejected by the network as dust).
-     * @return true if there is more value left on the channel, false if it is now fully used up.
-     */
+    @Override
     public synchronized boolean incrementPayment(Coin refundSize, byte[] signatureBytes) throws VerificationException, ValueOutOfRangeException, InsufficientMoneyException {
         checkState(state == State.READY);
         checkNotNull(refundSize);
@@ -314,6 +314,7 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
      *         will never complete, a timeout should be used.
      * @throws InsufficientMoneyException If the payment tx would have cost more in fees to spend than it is worth.
      */
+    @Override
     public synchronized ListenableFuture<Transaction> close() throws InsufficientMoneyException {
         if (storedServerChannel != null) {
             StoredServerChannel temp = storedServerChannel;
@@ -392,15 +393,14 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
     /**
      * Gets the fee paid in the final payment transaction (only available if settle() did not throw an exception)
      */
+    @Override
     public synchronized Coin getFeePaid() {
         checkState(state == State.CLOSED || state == State.CLOSING);
         return feePaidForPayment;
     }
 
-    /**
-     * Gets the multisig contract which was used to initialize this channel
-     */
-    public synchronized Transaction getMultisigContract() {
+    @Override
+    public synchronized Transaction getContract() {
         checkState(multisigContract != null);
         return multisigContract;
     }
@@ -414,17 +414,7 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
         return refundTransactionUnlockTimeSecs;
     }
 
-    /**
-     * Stores this channel's state in the wallet as a part of a {@link StoredPaymentChannelServerStates} wallet
-     * extension and keeps it up-to-date each time payment is incremented. This will be automatically removed when
-     * a call to {@link PaymentChannelV1ServerState#close()} completes successfully. A channel may only be stored after it
-     * has fully opened (ie state == State.READY).
-     *
-     * @param connectedHandler Optional {@link PaymentChannelServer} object that manages this object. This will
-     *                         set the appropriate pointer in the newly created {@link StoredServerChannel} before it is
-     *                         committed to wallet. If set, closing the state object will propagate the close to the
-     *                         handler which can then do a TCP disconnect.
-     */
+    @Override
     public synchronized void storeChannelInWallet(@Nullable PaymentChannelServer connectedHandler) {
         checkState(state == State.READY);
         if (storedServerChannel != null)
