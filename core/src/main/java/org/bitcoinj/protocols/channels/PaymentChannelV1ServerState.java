@@ -423,7 +423,7 @@ public class PaymentChannelV1ServerState extends PaymentChannelServerState {
         log.info("Storing state with contract hash {}.", multisigContract.getHash());
         StoredPaymentChannelServerStates channels = (StoredPaymentChannelServerStates)
                 wallet.addOrGetExistingExtension(new StoredPaymentChannelServerStates(wallet, broadcaster));
-        storedServerChannel = new StoredServerChannel(this, multisigContract, clientOutput, refundTransactionUnlockTimeSecs, serverKey, bestValueToMe, bestValueSignature);
+        storedServerChannel = new StoredServerChannel(this, getMajorVersion(), multisigContract, clientOutput, refundTransactionUnlockTimeSecs, serverKey, bestValueToMe, bestValueSignature);
         if (connectedHandler != null)
             checkState(storedServerChannel.setConnectedHandler(connectedHandler, false) == connectedHandler);
         channels.putChannel(storedServerChannel);

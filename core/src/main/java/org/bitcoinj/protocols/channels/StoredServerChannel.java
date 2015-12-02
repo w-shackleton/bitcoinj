@@ -46,9 +46,9 @@ public class StoredServerChannel {
     private PaymentChannelServer connectedHandler = null;
     PaymentChannelServerState state = null;
 
-    StoredServerChannel(@Nullable PaymentChannelServerState state, Transaction contract, TransactionOutput clientOutput,
+    StoredServerChannel(@Nullable PaymentChannelServerState state, int majorVersion, Transaction contract, TransactionOutput clientOutput,
                         long refundTransactionUnlockTimeSecs, ECKey myKey, Coin bestValueToMe, @Nullable byte[] bestValueSignature) {
-        this.majorVersion = state.getMajorVersion();
+        this.majorVersion = majorVersion;
         this.contract = contract;
         this.clientOutput = clientOutput;
         this.refundTransactionUnlockTimeSecs = refundTransactionUnlockTimeSecs;
