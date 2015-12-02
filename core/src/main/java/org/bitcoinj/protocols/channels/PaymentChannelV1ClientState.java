@@ -25,11 +25,7 @@ import org.bitcoinj.utils.Threading;
 import org.bitcoinj.wallet.AllowUnconfirmedCoinSelector;
 import org.spongycastle.crypto.params.KeyParameter;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,13 +64,8 @@ import static com.google.common.base.Preconditions.*;
  * provide the server with the multi-sig contract (via {@link PaymentChannelV1ClientState#getMultisigContract()}) safely.
  * </p>
  */
-public class PaymentChannelV1ClientState {
+public class PaymentChannelV1ClientState extends PaymentChannelClientState {
     private static final Logger log = LoggerFactory.getLogger(PaymentChannelV1ClientState.class);
-
-    private final Wallet wallet;
-    // Both sides need a key (private in our case, public for the server) in order to manage the multisig contract
-    // and transactions that spend it.
-    private final ECKey myKey, serverMultisigKey;
     // How much value (in satoshis) is locked up into the channel.
     private final Coin totalValue;
     // When the channel will automatically settle in favor of the client, if the server halts before protocol termination
@@ -108,22 +99,16 @@ public class PaymentChannelV1ClientState {
     }
     private State state;
 
-    // The id of this channel in the StoredPaymentChannelClientStates, or null if it is not stored
-    private StoredClientChannel storedChannel;
-
     PaymentChannelV1ClientState(StoredClientChannel storedClientChannel, Wallet wallet) throws VerificationException {
+        super(storedClientChannel, wallet);
         // The PaymentChannelClientConnection handles storedClientChannel.active and ensures we aren't resuming channels
-        this.wallet = checkNotNull(wallet);
         this.multisigContract = checkNotNull(storedClientChannel.contract);
         this.multisigScript = multisigContract.getOutput(0).getScriptPubKey();
         this.refundTx = checkNotNull(storedClientChannel.refund);
         this.refundFees = checkNotNull(storedClientChannel.refundFees);
         this.expiryTime = refundTx.getLockTime();
-        this.myKey = checkNotNull(storedClientChannel.myKey);
-        this.serverMultisigKey = null;
         this.totalValue = multisigContract.getOutput(0).getValue();
         this.valueToMe = checkNotNull(storedClientChannel.valueToMe);
-        this.storedChannel = storedClientChannel;
         this.state = State.READY;
         initWalletListeners();
     }
@@ -158,14 +143,16 @@ public class PaymentChannelV1ClientState {
      */
     public PaymentChannelV1ClientState(Wallet wallet, ECKey myKey, ECKey serverMultisigKey,
                                        Coin value, long expiryTimeInSeconds) throws VerificationException {
+        super(wallet, myKey, serverMultisigKey, value, expiryTimeInSeconds);
         checkArgument(value.signum() > 0);
-        this.wallet = checkNotNull(wallet);
         initWalletListeners();
-        this.serverMultisigKey = checkNotNull(serverMultisigKey);
-        this.myKey = checkNotNull(myKey);
         this.valueToMe = this.totalValue = checkNotNull(value);
         this.expiryTime = expiryTimeInSeconds;
         this.state = State.NEW;
+    }
+
+    public int getMajorVersion() {
+        return 1;
     }
 
     private synchronized void initWalletListeners() {
@@ -192,53 +179,11 @@ public class PaymentChannelV1ClientState {
         }, Threading.SAME_THREAD);
     }
 
-    private void watchCloseConfirmations() {
-        // When we see the close transaction get enough confirmations, we can just delete the record
-        // of this channel along with the refund tx from the wallet, because we're not going to need
-        // any of that any more.
-        final TransactionConfidence confidence = storedChannel.close.getConfidence();
-        int numConfirms = Context.get().getEventHorizon();
-        ListenableFuture<TransactionConfidence> future = confidence.getDepthFuture(numConfirms, Threading.SAME_THREAD);
-        Futures.addCallback(future, new FutureCallback<TransactionConfidence>() {
-            @Override
-            public void onSuccess(TransactionConfidence result) {
-                deleteChannelFromWallet();
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                Throwables.propagate(t);
-            }
-        });
-    }
-
-    private synchronized void deleteChannelFromWallet() {
-        log.info("Close tx has confirmed, deleting channel from wallet: {}", storedChannel);
-        StoredPaymentChannelClientStates channels = (StoredPaymentChannelClientStates)
-                wallet.getExtensions().get(StoredPaymentChannelClientStates.EXTENSION_ID);
-        channels.removeChannel(storedChannel);
-        storedChannel = null;
-    }
-
     /**
      * This object implements a state machine, and this accessor returns which state it's currently in.
      */
     public synchronized State getState() {
         return state;
-    }
-
-    /**
-     * Creates the initial multisig contract and incomplete refund transaction which can be requested at the appropriate
-     * time using {@link PaymentChannelV1ClientState#getIncompleteRefundTransaction} and
-     * {@link PaymentChannelV1ClientState#getMultisigContract()}. The way the contract is crafted can be adjusted by
-     * overriding {@link PaymentChannelV1ClientState#editContractSendRequest(org.bitcoinj.core.Wallet.SendRequest)}.
-     * By default unconfirmed coins are allowed to be used, as for micropayments the risk should be relatively low.
-     *
-     * @throws ValueOutOfRangeException if the value being used is too small to be accepted by the network
-     * @throws InsufficientMoneyException if the wallet doesn't contain enough balance to initiate
-     */
-    public void initiate() throws ValueOutOfRangeException, InsufficientMoneyException {
-        initiate(null);
     }
 
     /**
@@ -253,6 +198,7 @@ public class PaymentChannelV1ClientState {
      * @throws ValueOutOfRangeException   if the value being used is too small to be accepted by the network
      * @throws InsufficientMoneyException if the wallet doesn't contain enough balance to initiate
      */
+    @Override
     public synchronized void initiate(@Nullable KeyParameter userKey) throws ValueOutOfRangeException, InsufficientMoneyException {
         final NetworkParameters params = wallet.getParams();
         Transaction template = new Transaction(params);
@@ -313,7 +259,8 @@ public class PaymentChannelV1ClientState {
      * Once this step is done, you can use {@link PaymentChannelV1ClientState#incrementPaymentBy(Coin, KeyParameter)} to
      * start paying the server.
      */
-    public synchronized Transaction getMultisigContract() {
+    @Override
+    public synchronized Transaction getContract() {
         checkState(multisigContract != null);
         if (state == State.PROVIDE_MULTISIG_CONTRACT_TO_SERVER)
             state = State.READY;
@@ -390,12 +337,6 @@ public class PaymentChannelV1ClientState {
         }
     }
 
-    /** Container for a signature and an amount that was sent. */
-    public static class IncrementedPayment {
-        public TransactionSignature signature;
-        public Coin amount;
-    }
-
     /**
      * <p>Updates the outputs on the payment contract transaction and re-signs it. The state must be READY in order to
      * call this method. The signature that is returned should be sent to the server so it has the ability to broadcast
@@ -411,6 +352,7 @@ public class PaymentChannelV1ClientState {
      * @throws ValueOutOfRangeException If size is negative or the channel does not have sufficient money in it to
      *                                  complete this payment.
      */
+    @Override
     public synchronized IncrementedPayment incrementPaymentBy(Coin size, @Nullable KeyParameter userKey)
             throws ValueOutOfRangeException {
         checkState(state == State.READY);
@@ -444,27 +386,9 @@ public class PaymentChannelV1ClientState {
         return payment;
     }
 
-    private synchronized void updateChannelInWallet() {
-        if (storedChannel == null)
-            return;
-        storedChannel.valueToMe = valueToMe;
-        StoredPaymentChannelClientStates channels = (StoredPaymentChannelClientStates)
-                wallet.getExtensions().get(StoredPaymentChannelClientStates.EXTENSION_ID);
-        channels.updatedChannel(storedChannel);
-    }
-
-    /**
-     * Sets this channel's state in {@link StoredPaymentChannelClientStates} to unopened so this channel can be reopened
-     * later.
-     *
-     * @see PaymentChannelV1ClientState#storeChannelInWallet(Sha256Hash)
-     */
-    public synchronized void disconnectFromChannel() {
-        if (storedChannel == null)
-            return;
-        synchronized (storedChannel) {
-            storedChannel.active = false;
-        }
+    @Override
+    protected synchronized Coin getValueToMe() {
+        return valueToMe;
     }
 
     /**
@@ -500,6 +424,7 @@ public class PaymentChannelV1ClientState {
      * @param id A hash providing this channel with an id which uniquely identifies this server. It does not have to be
      *           unique.
      */
+    @Override
     public synchronized void storeChannelInWallet(Sha256Hash id) {
         checkState(state == State.SAVE_STATE_IN_WALLET && id != null);
         if (storedChannel != null) {
@@ -538,6 +463,7 @@ public class PaymentChannelV1ClientState {
     /**
      * Gets the total value of this channel (ie the maximum payment possible)
      */
+    @Override
     public Coin getTotalValue() {
         return totalValue;
     }
@@ -545,6 +471,7 @@ public class PaymentChannelV1ClientState {
     /**
      * Gets the current amount refunded to us from the multisig contract (ie totalValue-valueSentToServer)
      */
+    @Override
     public synchronized Coin getValueRefunded() {
         checkState(state == State.READY);
         return valueToMe;

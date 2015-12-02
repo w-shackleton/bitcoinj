@@ -58,13 +58,16 @@ public class PaymentChannelClient implements IPaymentChannelClient {
 
     protected final ReentrantLock lock = Threading.lock("channelclient");
 
+    // Used to track the negotiated version number
+    @GuardedBy("lock") private int majorVersion;
+
     @GuardedBy("lock") private final ClientConnection conn;
 
     // Used to keep track of whether or not the "socket" ie connection is open and we can generate messages
     @VisibleForTesting @GuardedBy("lock") boolean connectionOpen = false;
 
     // The state object used to step through initialization and pay the server
-    @GuardedBy("lock") private PaymentChannelV1ClientState state;
+    @GuardedBy("lock") private PaymentChannelClientState state;
 
     // The step we are at in initialization, this is partially duplicated in the state object
     private enum InitStep {
@@ -228,7 +231,7 @@ public class PaymentChannelClient implements IPaymentChannelClient {
 
         Protos.ProvideRefund.Builder provideRefundBuilder = Protos.ProvideRefund.newBuilder()
                 .setMultisigKey(ByteString.copyFrom(myKey.getPubKey()))
-                .setTx(ByteString.copyFrom(state.getIncompleteRefundTransaction().bitcoinSerialize()));
+                .setTx(ByteString.copyFrom(((PaymentChannelV1ClientState)state).getIncompleteRefundTransaction().bitcoinSerialize()));
 
         conn.sendToServer(Protos.TwoWayChannelMessage.newBuilder()
                 .setProvideRefund(provideRefundBuilder)
@@ -239,10 +242,12 @@ public class PaymentChannelClient implements IPaymentChannelClient {
 
     @GuardedBy("lock")
     private void receiveRefund(Protos.TwoWayChannelMessage refundMsg, @Nullable KeyParameter userKey) throws VerificationException {
+        checkState(majorVersion == 1);
         checkState(step == InitStep.WAITING_FOR_REFUND_RETURN && refundMsg.hasReturnRefund());
         log.info("Got RETURN_REFUND message, providing signed contract");
         Protos.ReturnRefund returnedRefund = refundMsg.getReturnRefund();
-        state.provideRefundSignature(returnedRefund.getSignature().toByteArray(), userKey);
+        // Cast is safe since we've checked the version number
+        ((PaymentChannelV1ClientState)state).provideRefundSignature(returnedRefund.getSignature().toByteArray(), userKey);
         step = InitStep.WAITING_FOR_CHANNEL_OPEN;
 
         // Before we can send the server the contract (ie send it to the network), we must ensure that our refund
@@ -250,11 +255,11 @@ public class PaymentChannelClient implements IPaymentChannelClient {
         state.storeChannelInWallet(serverId);
 
         Protos.ProvideContract.Builder contractMsg = Protos.ProvideContract.newBuilder()
-                .setTx(ByteString.copyFrom(state.getMultisigContract().bitcoinSerialize()));
+                .setTx(ByteString.copyFrom(state.getContract().bitcoinSerialize()));
         try {
             // Make an initial payment of the dust limit, and put it into the message as well. The size of the
             // server-requested dust limit was already sanity checked by this point.
-            PaymentChannelV1ClientState.IncrementedPayment payment = state().incrementPaymentBy(Coin.valueOf(minPayment), userKey);
+            PaymentChannelClientState.IncrementedPayment payment = state().incrementPaymentBy(Coin.valueOf(minPayment), userKey);
             Protos.UpdatePayment.Builder initialMsg = contractMsg.getInitialPaymentBuilder();
             initialMsg.setSignature(ByteString.copyFrom(payment.signature.encodeToBitcoin()));
             initialMsg.setClientChangeValue(state.getValueRefunded().value);
@@ -494,13 +499,13 @@ public class PaymentChannelClient implements IPaymentChannelClient {
     }
 
     /**
-     * <p>Gets the {@link PaymentChannelV1ClientState} object which stores the current state of the connection with the
+     * <p>Gets the {@link PaymentChannelClientState} object which stores the current state of the connection with the
      * server.</p>
      *
      * <p>Note that if you call any methods which update state directly the server will not be notified and channel
      * initialization logic in the connection may fail unexpectedly.</p>
      */
-    public PaymentChannelV1ClientState state() {
+    public PaymentChannelClientState state() {
         lock.lock();
         try {
             return state;
