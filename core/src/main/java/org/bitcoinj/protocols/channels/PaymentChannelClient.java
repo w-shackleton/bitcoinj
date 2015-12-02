@@ -64,7 +64,7 @@ public class PaymentChannelClient implements IPaymentChannelClient {
     @VisibleForTesting @GuardedBy("lock") boolean connectionOpen = false;
 
     // The state object used to step through initialization and pay the server
-    @GuardedBy("lock") private PaymentChannelClientState state;
+    @GuardedBy("lock") private PaymentChannelV1ClientState state;
 
     // The step we are at in initialization, this is partially duplicated in the state object
     private enum InitStep {
@@ -215,7 +215,7 @@ public class PaymentChannelClient implements IPaymentChannelClient {
         final byte[] pubKeyBytes = initiate.getMultisigKey().toByteArray();
         if (!ECKey.isPubKeyCanonical(pubKeyBytes))
             throw new VerificationException("Server gave us a non-canonical public key, protocol error.");
-        state = new PaymentChannelClientState(wallet, myKey, ECKey.fromPublicOnly(pubKeyBytes), contractValue, expireTime);
+        state = new PaymentChannelV1ClientState(wallet, myKey, ECKey.fromPublicOnly(pubKeyBytes), contractValue, expireTime);
         try {
             state.initiate(userKeySetup);
         } catch (ValueOutOfRangeException e) {
@@ -254,7 +254,7 @@ public class PaymentChannelClient implements IPaymentChannelClient {
         try {
             // Make an initial payment of the dust limit, and put it into the message as well. The size of the
             // server-requested dust limit was already sanity checked by this point.
-            PaymentChannelClientState.IncrementedPayment payment = state().incrementPaymentBy(Coin.valueOf(minPayment), userKey);
+            PaymentChannelV1ClientState.IncrementedPayment payment = state().incrementPaymentBy(Coin.valueOf(minPayment), userKey);
             Protos.UpdatePayment.Builder initialMsg = contractMsg.getInitialPaymentBuilder();
             initialMsg.setSignature(ByteString.copyFrom(payment.signature.encodeToBitcoin()));
             initialMsg.setClientChangeValue(state.getValueRefunded().value);
@@ -277,7 +277,7 @@ public class PaymentChannelClient implements IPaymentChannelClient {
         if (step == InitStep.WAITING_FOR_INITIATE) {
             // We skipped the initiate step, because a previous channel that's still valid was resumed.
             wasInitiated  = false;
-            state = new PaymentChannelClientState(storedChannel, wallet);
+            state = new PaymentChannelV1ClientState(storedChannel, wallet);
         }
         step = InitStep.CHANNEL_OPEN;
         // channelOpen should disable timeouts, but
@@ -494,13 +494,13 @@ public class PaymentChannelClient implements IPaymentChannelClient {
     }
 
     /**
-     * <p>Gets the {@link PaymentChannelClientState} object which stores the current state of the connection with the
+     * <p>Gets the {@link PaymentChannelV1ClientState} object which stores the current state of the connection with the
      * server.</p>
      *
      * <p>Note that if you call any methods which update state directly the server will not be notified and channel
      * initialization logic in the connection may fail unexpectedly.</p>
      */
-    public PaymentChannelClientState state() {
+    public PaymentChannelV1ClientState state() {
         lock.lock();
         try {
             return state;
@@ -557,7 +557,7 @@ public class PaymentChannelClient implements IPaymentChannelClient {
             if (wallet.isEncrypted() && userKey == null)
                 throw new ECKey.KeyIsEncryptedException();
 
-            PaymentChannelClientState.IncrementedPayment payment = state().incrementPaymentBy(size, userKey);
+            PaymentChannelV1ClientState.IncrementedPayment payment = state().incrementPaymentBy(size, userKey);
             Protos.UpdatePayment.Builder updatePaymentBuilder = Protos.UpdatePayment.newBuilder()
                     .setSignature(ByteString.copyFrom(payment.signature.encodeToBitcoin()))
                     .setClientChangeValue(state.getValueRefunded().value);

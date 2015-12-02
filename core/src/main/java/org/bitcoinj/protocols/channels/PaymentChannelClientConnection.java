@@ -217,13 +217,13 @@ public class PaymentChannelClientConnection {
     }
 
     /**
-     * <p>Gets the {@link PaymentChannelClientState} object which stores the current state of the connection with the
+     * <p>Gets the {@link PaymentChannelV1ClientState} object which stores the current state of the connection with the
      * server.</p>
      *
      * <p>Note that if you call any methods which update state directly the server will not be notified and channel
      * initialization logic in the connection may fail unexpectedly.</p>
      */
-    public PaymentChannelClientState state() {
+    public PaymentChannelV1ClientState state() {
         return channelClient.state();
     }
 

@@ -17,7 +17,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
  * negotiation is. Note that this class only allows the amount of money received to be incremented, not decremented.</p>
  *
  * <p>This class implements the core state machine for the server side of the protocol. The client side is implemented
- * by {@link PaymentChannelClientState} and {@link PaymentChannelServerListener} implements the server-side network
+ * by {@link PaymentChannelV1ClientState} and {@link PaymentChannelServerListener} implements the server-side network
  * protocol listening for TCP/IP connections and moving this class through each state. We say that the party who is
  * sending funds is the <i>client</i> or <i>initiating party</i>. The party that is receiving the funds is the
  * <i>server</i> or <i>receiving party</i>. Although the underlying Bitcoin protocol is capable of more complex

@@ -219,7 +219,7 @@ public class ChannelConnectionTest extends TestWithWallet {
 
         // Send the settle TX to the client wallet.
         sendMoneyToWallet(settleTx, AbstractBlockChain.NewBlockType.BEST_CHAIN);
-        assertEquals(PaymentChannelClientState.State.CLOSED, client.state().getState());
+        assertEquals(PaymentChannelV1ClientState.State.CLOSED, client.state().getState());
 
         server.close();
         server.close();
