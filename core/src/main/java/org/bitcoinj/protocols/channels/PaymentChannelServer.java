@@ -127,7 +127,7 @@ public class PaymentChannelServer {
     private final Coin minAcceptedChannelSize;
 
     // The state manager for this channel
-    @GuardedBy("lock") private PaymentChannelServerState state;
+    @GuardedBy("lock") private PaymentChannelV1ServerState state;
 
     // The time this channel expires (ie the refund transaction's locktime)
     @GuardedBy("lock") private long expireTime;
@@ -199,11 +199,11 @@ public class PaymentChannelServer {
     }
 
     /**
-     * Returns the underlying {@link PaymentChannelServerState} object that is being manipulated. This object allows
+     * Returns the underlying {@link PaymentChannelV1ServerState} object that is being manipulated. This object allows
      * you to learn how much money has been transferred, etc. May be null if the channel wasn't negotiated yet.
      */
     @Nullable
-    public PaymentChannelServerState state() {
+    public PaymentChannelV1ServerState state() {
         return state;
     }
 
@@ -294,7 +294,7 @@ public class PaymentChannelServer {
         log.info("Got refund transaction, returning signature");
 
         Protos.ProvideRefund providedRefund = msg.getProvideRefund();
-        state = new PaymentChannelServerState(broadcaster, wallet, myKey, expireTime);
+        state = new PaymentChannelV1ServerState(broadcaster, wallet, myKey, expireTime);
         byte[] signature = state.provideRefundTransaction(wallet.getParams().getDefaultSerializer().makeTransaction(providedRefund.getTx().toByteArray()),
                 providedRefund.getMultisigKey().toByteArray());
 

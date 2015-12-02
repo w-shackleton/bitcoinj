@@ -91,7 +91,7 @@ public class StoredPaymentChannelServerStates implements WalletExtension {
 
     /**
      * <p>Closes the given channel using {@link ServerConnectionEventHandler#closeChannel()} and
-     * {@link PaymentChannelServerState#close()} to notify any connected client of channel closure and to complete and
+     * {@link PaymentChannelV1ServerState#close()} to notify any connected client of channel closure and to complete and
      * broadcast the latest payment transaction.</p>
      *
      * <p>Removes the given channel from this set of {@link StoredServerChannel}s and notifies the wallet of a change to

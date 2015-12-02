@@ -85,7 +85,7 @@ public class ExamplePaymentChannelServer implements PaymentChannelServerListener
                 log.info("Channel open for {}: {}.", clientAddress, channelId);
 
                 // Try to get the state object from the stored state set in our wallet
-                PaymentChannelServerState state = null;
+                PaymentChannelV1ServerState state = null;
                 try {
                     StoredPaymentChannelServerStates storedStates = (StoredPaymentChannelServerStates)
                             appKit.wallet().getExtensions().get(StoredPaymentChannelServerStates.class.getName());

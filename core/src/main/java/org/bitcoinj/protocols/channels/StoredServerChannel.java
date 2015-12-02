@@ -40,9 +40,9 @@ public class StoredServerChannel {
     // In-memory pointer to the event handler which handles this channel if the client is connected.
     // Used as a flag to prevent duplicate connections and to disconnect the channel if its expire time approaches.
     private PaymentChannelServer connectedHandler = null;
-    PaymentChannelServerState state = null;
+    PaymentChannelV1ServerState state = null;
 
-    StoredServerChannel(@Nullable PaymentChannelServerState state, Transaction contract, TransactionOutput clientOutput,
+    StoredServerChannel(@Nullable PaymentChannelV1ServerState state, Transaction contract, TransactionOutput clientOutput,
                         long refundTransactionUnlockTimeSecs, ECKey myKey, Coin bestValueToMe, @Nullable byte[] bestValueSignature) {
         this.contract = contract;
         this.clientOutput = clientOutput;
@@ -88,16 +88,16 @@ public class StoredServerChannel {
     }
 
     /**
-     * Gets the canonical {@link PaymentChannelServerState} object for this channel, either by returning an existing one
+     * Gets the canonical {@link PaymentChannelV1ServerState} object for this channel, either by returning an existing one
      * or by creating a new one.
      *
-     * @param wallet The wallet which holds the {@link PaymentChannelServerState} in which this is saved and which will
+     * @param wallet The wallet which holds the {@link PaymentChannelV1ServerState} in which this is saved and which will
      *               be used to complete transactions
      * @param broadcaster The {@link TransactionBroadcaster} which will be used to broadcast contract/payment transactions.
      */
-    public synchronized PaymentChannelServerState getOrCreateState(Wallet wallet, TransactionBroadcaster broadcaster) throws VerificationException {
+    public synchronized PaymentChannelV1ServerState getOrCreateState(Wallet wallet, TransactionBroadcaster broadcaster) throws VerificationException {
         if (state == null)
-            state = new PaymentChannelServerState(this, wallet, broadcaster);
+            state = new PaymentChannelV1ServerState(this, wallet, broadcaster);
         checkArgument(wallet == state.wallet);
         return state;
     }

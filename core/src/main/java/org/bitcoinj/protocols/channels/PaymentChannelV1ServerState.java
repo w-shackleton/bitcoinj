@@ -64,8 +64,8 @@ import static com.google.common.base.Preconditions.*;
  * can then begin paying by providing us with signatures for the multi-sig contract which pay some amount back to the
  * client, and the rest is ours to do with as we wish.</p>
  */
-public class PaymentChannelServerState {
-    private static final Logger log = LoggerFactory.getLogger(PaymentChannelServerState.class);
+public class PaymentChannelV1ServerState {
+    private static final Logger log = LoggerFactory.getLogger(PaymentChannelV1ServerState.class);
 
     /**
      * The different logical states the channel can be in. Because the first action we need to track is the client
@@ -113,7 +113,7 @@ public class PaymentChannelServerState {
 
     private StoredServerChannel storedServerChannel = null;
 
-    PaymentChannelServerState(StoredServerChannel storedServerChannel, Wallet wallet, TransactionBroadcaster broadcaster) throws VerificationException {
+    PaymentChannelV1ServerState(StoredServerChannel storedServerChannel, Wallet wallet, TransactionBroadcaster broadcaster) throws VerificationException {
         synchronized (storedServerChannel) {
             this.wallet = checkNotNull(wallet);
             this.broadcaster = checkNotNull(broadcaster);
@@ -142,7 +142,7 @@ public class PaymentChannelServerState {
      *                  (this MUST be fresh and CANNOT be used elsewhere)
      * @param minExpireTime The earliest time at which the client can claim the refund transaction (UNIX timestamp of block)
      */
-    public PaymentChannelServerState(TransactionBroadcaster broadcaster, Wallet wallet, ECKey serverKey, long minExpireTime) {
+    public PaymentChannelV1ServerState(TransactionBroadcaster broadcaster, Wallet wallet, ECKey serverKey, long minExpireTime) {
         this.state = State.WAITING_FOR_REFUND_TRANSACTION;
         this.serverKey = checkNotNull(serverKey);
         this.wallet = checkNotNull(wallet);
@@ -213,7 +213,7 @@ public class PaymentChannelServerState {
      *         Note that if the network simply rejects the transaction, this future will never complete, a timeout should be used.
      * @throws VerificationException If the provided multisig contract is not well-formed or does not meet previously-specified parameters
      */
-    public synchronized ListenableFuture<PaymentChannelServerState> provideMultiSigContract(final Transaction multisigContract) throws VerificationException {
+    public synchronized ListenableFuture<PaymentChannelV1ServerState> provideMultiSigContract(final Transaction multisigContract) throws VerificationException {
         checkNotNull(multisigContract);
         checkState(state == State.WAITING_FOR_MULTISIG_CONTRACT);
         try {
@@ -236,7 +236,7 @@ public class PaymentChannelServerState {
         }
         log.info("Broadcasting multisig contract: {}", multisigContract);
         state = State.WAITING_FOR_MULTISIG_ACCEPTANCE;
-        final SettableFuture<PaymentChannelServerState> future = SettableFuture.create();
+        final SettableFuture<PaymentChannelV1ServerState> future = SettableFuture.create();
         Futures.addCallback(broadcaster.broadcastTransaction(multisigContract).future(), new FutureCallback<Transaction>() {
             @Override public void onSuccess(Transaction transaction) {
                 log.info("Successfully broadcast multisig contract {}. Channel now open.", transaction.getHashAsString());
@@ -248,7 +248,7 @@ public class PaymentChannelServerState {
                     throw new RuntimeException(e); // Cannot happen, we already called multisigContract.verify()
                 }
                 state = State.READY;
-                future.set(PaymentChannelServerState.this);
+                future.set(PaymentChannelV1ServerState.this);
             }
 
             @Override public void onFailure(Throwable throwable) {
@@ -481,7 +481,7 @@ public class PaymentChannelServerState {
     /**
      * Stores this channel's state in the wallet as a part of a {@link StoredPaymentChannelServerStates} wallet
      * extension and keeps it up-to-date each time payment is incremented. This will be automatically removed when
-     * a call to {@link PaymentChannelServerState#close()} completes successfully. A channel may only be stored after it
+     * a call to {@link PaymentChannelV1ServerState#close()} completes successfully. A channel may only be stored after it
      * has fully opened (ie state == State.READY).
      *
      * @param connectedHandler Optional {@link PaymentChannelServer} object that manages this object. This will

@@ -32,7 +32,6 @@ import org.junit.Test;
 import org.spongycastle.crypto.params.KeyParameter;
 
 import javax.annotation.Nullable;
-import javax.lang.model.type.ExecutableType;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -132,7 +131,7 @@ public class ChannelConnectionTest extends TestWithWallet {
 
     public void exectuteSimpleChannelTest(KeyParameter userKeySetup) throws Exception {
         // Test with network code and without any issues. We'll broadcast two txns: multisig contract and settle transaction.
-        final SettableFuture<ListenableFuture<PaymentChannelServerState>> serverCloseFuture = SettableFuture.create();
+        final SettableFuture<ListenableFuture<PaymentChannelV1ServerState>> serverCloseFuture = SettableFuture.create();
         final SettableFuture<Sha256Hash> channelOpenFuture = SettableFuture.create();
         final BlockingQueue<ChannelTestUtils.UpdatePair> q = new LinkedBlockingQueue<ChannelTestUtils.UpdatePair>();
         final PaymentChannelServerListener server = new PaymentChannelServerListener(mockBroadcaster, serverWallet, 30, COIN,
@@ -205,7 +204,7 @@ public class ChannelConnectionTest extends TestWithWallet {
 
         StoredPaymentChannelServerStates channels = (StoredPaymentChannelServerStates)serverWallet.getExtensions().get(StoredPaymentChannelServerStates.EXTENSION_ID);
         StoredServerChannel storedServerChannel = channels.getChannel(broadcastMultiSig.getHash());
-        PaymentChannelServerState serverState = storedServerChannel.getOrCreateState(serverWallet, mockBroadcaster);
+        PaymentChannelV1ServerState serverState = storedServerChannel.getOrCreateState(serverWallet, mockBroadcaster);
 
         // Check that you can call settle multiple times with no exceptions.
         client.settle();
@@ -213,7 +212,7 @@ public class ChannelConnectionTest extends TestWithWallet {
 
         broadcastTxPause.release();
         Transaction settleTx = broadcasts.take();
-        assertEquals(PaymentChannelServerState.State.CLOSED, serverState.getState());
+        assertEquals(PaymentChannelV1ServerState.State.CLOSED, serverState.getState());
         if (!serverState.getBestValueToMe().equals(amount) || !serverState.getFeePaid().equals(Coin.ZERO))
             fail();
         assertTrue(channels.mapChannels.isEmpty());
