@@ -122,8 +122,7 @@ public class StoredServerChannel {
                 "    Client output: %s%n" +
                 "    Refund unlock: %s (%d unix time)%n" +
                 "    Contract:    %s%n",
-                majorVersion,
-                connectedHandler != null ? "connected" : "disconnected", myKey, bestValueToMe,
+                connectedHandler != null ? "connected" : "disconnected", majorVersion, myKey, bestValueToMe,
                 clientOutput,  new Date(refundTransactionUnlockTimeSecs * 1000), refundTransactionUnlockTimeSecs,
                 contract.toString().replaceAll(newline, newline + "    "));
     }

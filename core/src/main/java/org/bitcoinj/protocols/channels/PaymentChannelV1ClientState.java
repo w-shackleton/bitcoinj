@@ -61,7 +61,7 @@ import static com.google.common.base.Preconditions.*;
  * server. Once you have retrieved the signature, use {@link PaymentChannelV1ClientState#provideRefundSignature(byte[], KeyParameter)}.
  * You must then call {@link PaymentChannelV1ClientState#storeChannelInWallet(Sha256Hash)} to store the refund transaction
  * in the wallet, protecting you against a malicious server attempting to destroy all your coins. At this point, you can
- * provide the server with the multi-sig contract (via {@link PaymentChannelV1ClientState#getMultisigContract()}) safely.
+ * provide the server with the multi-sig contract (via {@link PaymentChannelV1ClientState#getContract()}) safely.
  * </p>
  */
 public class PaymentChannelV1ClientState extends PaymentChannelClientState {
@@ -184,7 +184,7 @@ public class PaymentChannelV1ClientState extends PaymentChannelClientState {
     /**
      * Creates the initial multisig contract and incomplete refund transaction which can be requested at the appropriate
      * time using {@link PaymentChannelV1ClientState#getIncompleteRefundTransaction} and
-     * {@link PaymentChannelV1ClientState#getMultisigContract()}. The way the contract is crafted can be adjusted by
+     * {@link PaymentChannelV1ClientState#getContract()}. The way the contract is crafted can be adjusted by
      * overriding {@link PaymentChannelV1ClientState#editContractSendRequest(org.bitcoinj.core.Wallet.SendRequest)}.
      * By default unconfirmed coins are allowed to be used, as for micropayments the risk should be relatively low.
      * @param userKey Key derived from a user password, needed for any signing when the wallet is encrypted.
@@ -403,7 +403,7 @@ public class PaymentChannelV1ClientState extends PaymentChannelClientState {
                 wallet.getExtensions().get(StoredPaymentChannelClientStates.EXTENSION_ID);
         checkNotNull(channels, "You have not added the StoredPaymentChannelClientStates extension to the wallet.");
         checkState(channels.getChannel(id, multisigContract.getHash()) == null);
-        storedChannel = new StoredClientChannel(id, multisigContract, refundTx, myKey, valueToMe, refundFees, true);
+        storedChannel = new StoredClientChannel(getMajorVersion(), id, multisigContract, refundTx, myKey, valueToMe, refundFees, true);
         channels.putChannel(storedChannel);
     }
 
