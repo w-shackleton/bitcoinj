@@ -38,7 +38,7 @@ message StoredClientPaymentChannels {
 message StoredClientPaymentChannel {
 	required bytes id = 1;
 	required bytes contractTransaction = 2;
-	required bytes refundTransaction = 3;
+	optional bytes refundTransaction = 3;
 	required bytes myPublicKey = 8;
 	// Deprecated, key is already stored in the wallet, and found using myPublicKey;
 	required bytes myKey = 4;
@@ -48,4 +48,5 @@ message StoredClientPaymentChannel {
     // It spends the contractTransaction and is expected to be broadcast to the network by the server.
     // It's supposed to be in the wallet already.
     optional bytes closeTransactionHash = 7;
+	required uint32 majorVersion = 9;
 }
