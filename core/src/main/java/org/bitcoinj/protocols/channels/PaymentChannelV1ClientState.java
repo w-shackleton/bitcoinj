@@ -114,19 +114,6 @@ public class PaymentChannelV1ClientState extends PaymentChannelClientState {
     }
 
     /**
-     * Returns true if the tx is a valid settlement transaction.
-     */
-    public synchronized boolean isSettlementTransaction(Transaction tx) {
-        try {
-            tx.verify();
-            tx.getInput(0).verify(multisigContract.getOutput(0));
-            return true;
-        } catch (VerificationException e) {
-            return false;
-        }
-    }
-
-    /**
      * Creates a state object for a payment channel client. It is expected that you be ready to
      * {@link PaymentChannelV1ClientState#initiate()} after construction (to avoid creating objects for channels which are
      * not going to finish opening) and thus some parameters provided here are only used in
@@ -184,6 +171,14 @@ public class PaymentChannelV1ClientState extends PaymentChannelClientState {
      */
     public synchronized State getState() {
         return state;
+    }
+
+    /**
+     * Returns <code>true</code> if the state machine is in a closed state.
+     * @return
+     */
+    public boolean isClosed() {
+        return getState() == State.CLOSED;
     }
 
     /**
@@ -475,12 +470,5 @@ public class PaymentChannelV1ClientState extends PaymentChannelClientState {
     public synchronized Coin getValueRefunded() {
         checkState(state == State.READY);
         return valueToMe;
-    }
-
-    /**
-     * Returns the amount of money sent on this channel so far.
-     */
-    public synchronized Coin getValueSpent() {
-        return getTotalValue().subtract(getValueRefunded());
     }
 }

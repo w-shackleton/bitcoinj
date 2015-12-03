@@ -99,7 +99,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
                 COIN.multiply(10), 20);
         assertEquals(PaymentChannelV1ClientState.State.NEW, channelState.getState());
         try {
-            channelState.getMultisigContract();
+            channelState.getContract();
             fail();
         } catch (IllegalStateException e) {
             // Expected.
@@ -136,7 +136,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelV1ClientState.State.PROVIDE_MULTISIG_CONTRACT_TO_SERVER, clientState.getState());
 
         // Validate the multisig contract looks right.
-        Transaction multisigContract = new Transaction(params, clientState.getMultisigContract().bitcoinSerialize());
+        Transaction multisigContract = new Transaction(params, clientState.getContract().bitcoinSerialize());
         assertEquals(PaymentChannelV1ClientState.State.READY, clientState.getState());
         assertEquals(2, multisigContract.getOutputs().size());   // One multi-sig, one change.
         Script script = multisigContract.getOutput(0).getScriptPubKey();
@@ -254,7 +254,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelV1ClientState.State.PROVIDE_MULTISIG_CONTRACT_TO_SERVER, clientState.getState());
 
         // Validate the multisig contract looks right.
-        Transaction multisigContract = new Transaction(params, clientState.getMultisigContract().bitcoinSerialize());
+        Transaction multisigContract = new Transaction(params, clientState.getContract().bitcoinSerialize());
         assertEquals(PaymentChannelV1ClientState.State.READY, clientState.getState());
         assertEquals(2, multisigContract.getOutputs().size());   // One multi-sig, one change.
         Script script = multisigContract.getOutput(0).getScriptPubKey();
@@ -412,7 +412,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
 
         try { clientState.incrementPaymentBy(Coin.SATOSHI, null); fail(); } catch (IllegalStateException e) {}
 
-        byte[] multisigContractSerialized = clientState.getMultisigContract().bitcoinSerialize();
+        byte[] multisigContractSerialized = clientState.getContract().bitcoinSerialize();
 
         Transaction multisigContract = new Transaction(params, multisigContractSerialized);
         multisigContract.clearOutputs();
@@ -583,7 +583,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelV1ClientState.State.PROVIDE_MULTISIG_CONTRACT_TO_SERVER, clientState.getState());
 
         // Get the multisig contract
-        Transaction multisigContract = new Transaction(params, clientState.getMultisigContract().bitcoinSerialize());
+        Transaction multisigContract = new Transaction(params, clientState.getContract().bitcoinSerialize());
         assertEquals(PaymentChannelV1ClientState.State.READY, clientState.getState());
 
         // Provide the server with the multisig contract and simulate successful propagation/acceptance.
@@ -663,7 +663,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelV1ClientState.State.PROVIDE_MULTISIG_CONTRACT_TO_SERVER, clientState.getState());
 
         // Validate the multisig contract looks right.
-        Transaction multisigContract = new Transaction(params, clientState.getMultisigContract().bitcoinSerialize());
+        Transaction multisigContract = new Transaction(params, clientState.getContract().bitcoinSerialize());
         assertEquals(PaymentChannelV1ClientState.State.READY, clientState.getState());
         assertEquals(2, multisigContract.getOutputs().size());   // One multi-sig, one change.
         Script script = multisigContract.getOutput(0).getScriptPubKey();
@@ -744,7 +744,7 @@ public class PaymentChannelStateTest extends TestWithWallet {
         assertEquals(PaymentChannelV1ClientState.State.PROVIDE_MULTISIG_CONTRACT_TO_SERVER, clientState.getState());
 
         // Validate the multisig contract looks right.
-        Transaction multisigContract = new Transaction(params, clientState.getMultisigContract().bitcoinSerialize());
+        Transaction multisigContract = new Transaction(params, clientState.getContract().bitcoinSerialize());
         assertEquals(PaymentChannelV1ClientState.State.READY, clientState.getState());
         assertEquals(2, multisigContract.getOutputs().size());   // One multi-sig, one change.
         Script script = multisigContract.getOutput(0).getScriptPubKey();

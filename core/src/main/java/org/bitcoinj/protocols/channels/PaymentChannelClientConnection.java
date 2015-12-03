@@ -223,7 +223,7 @@ public class PaymentChannelClientConnection {
      * <p>Note that if you call any methods which update state directly the server will not be notified and channel
      * initialization logic in the connection may fail unexpectedly.</p>
      */
-    public PaymentChannelV1ClientState state() {
+    public PaymentChannelClientState state() {
         return channelClient.state();
     }
 

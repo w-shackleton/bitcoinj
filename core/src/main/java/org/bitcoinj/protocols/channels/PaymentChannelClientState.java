@@ -58,6 +58,8 @@ public abstract class PaymentChannelClientState {
 
     public abstract int getMajorVersion();
 
+    public abstract boolean isClosed();
+
     /**
      * Creates the initial multisig contract and incomplete refund transaction which can be requested at the appropriate
      * time using {@link PaymentChannelV1ClientState#getIncompleteRefundTransaction} and
@@ -115,6 +117,13 @@ public abstract class PaymentChannelClientState {
     }
 
     protected abstract Coin getValueToMe();
+
+    /**
+     * Returns the amount of money sent on this channel so far.
+     */
+    public synchronized Coin getValueSpent() {
+        return getTotalValue().subtract(getValueRefunded());
+    }
 
     /**
      * Gets the contract which was used to initialize this channel
@@ -190,4 +199,17 @@ public abstract class PaymentChannelClientState {
      * Gets the current amount refunded to us from the multisig contract (ie totalValue-valueSentToServer)
      */
     public abstract Coin getValueRefunded();
+
+    /**
+     * Returns true if the tx is a valid settlement transaction.
+     */
+    public synchronized boolean isSettlementTransaction(Transaction tx) {
+        try {
+            tx.verify();
+            tx.getInput(0).verify(getContract().getOutput(0));
+            return true;
+        } catch (VerificationException e) {
+            return false;
+        }
+    }
 }
