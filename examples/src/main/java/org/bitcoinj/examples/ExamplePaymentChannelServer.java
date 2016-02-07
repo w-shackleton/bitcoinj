@@ -24,6 +24,7 @@ import org.bitcoinj.core.VerificationException;
 import org.bitcoinj.core.WalletExtension;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.protocols.channels.*;
 import org.bitcoinj.utils.BriefLogFormatter;
 import com.google.common.collect.ImmutableList;
@@ -50,7 +51,7 @@ public class ExamplePaymentChannelServer implements PaymentChannelServerListener
     }
 
     public void run() throws Exception {
-        NetworkParameters params = RegTestParams.get();
+        NetworkParameters params = TestNet3Params.get();
 
         // Bring up all the objects we need, create/load a wallet, sync the chain, etc. We override WalletAppKit so we
         // can customize it by adding the extension objects - we have to do this before the wallet file is loaded so
@@ -61,10 +62,9 @@ public class ExamplePaymentChannelServer implements PaymentChannelServerListener
                 // The StoredPaymentChannelClientStates object is responsible for, amongst other things, broadcasting
                 // the refund transaction if its lock time has expired. It also persists channels so we can resume them
                 // after a restart.
-                return ImmutableList.<WalletExtension>of(new StoredPaymentChannelServerStates(null));
+                return ImmutableList.<WalletExtension>of(new StoredPaymentChannelServerStates(appKit.wallet()));
             }
         };
-        appKit.connectToLocalHost();
         appKit.startAsync();
         appKit.awaitRunning();
 
@@ -72,7 +72,7 @@ public class ExamplePaymentChannelServer implements PaymentChannelServerListener
 
         // We provide a peer group, a wallet, a timeout in seconds, the amount we require to start a channel and
         // an implementation of HandlerFactory, which we just implement ourselves.
-        new PaymentChannelServerListener(appKit.peerGroup(), appKit.wallet(), 15, Coin.valueOf(100000), this).bindAndStart(4242);
+        new PaymentChannelServerListener(appKit.peerGroup(), appKit.wallet(), 600, Coin.valueOf(100000), this).bindAndStart(4242);
     }
 
     @Override

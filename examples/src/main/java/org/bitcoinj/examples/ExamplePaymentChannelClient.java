@@ -20,6 +20,8 @@ package org.bitcoinj.examples;
 import org.bitcoinj.core.*;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.RegTestParams;
+import org.bitcoinj.protocols.channels.PaymentChannelClient;
+import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.protocols.channels.PaymentChannelClientConnection;
 import org.bitcoinj.protocols.channels.StoredPaymentChannelClientStates;
 import org.bitcoinj.protocols.channels.ValueOutOfRangeException;
@@ -60,7 +62,7 @@ public class ExamplePaymentChannelClient {
     public ExamplePaymentChannelClient() {
         channelSize = CENT;
         myKey = new ECKey();
-        params = RegTestParams.get();
+        params = TestNet3Params.get();
     }
 
     public void run(final String host) throws Exception {
@@ -75,10 +77,9 @@ public class ExamplePaymentChannelClient {
                 // after a restart.
                 // We should not send a PeerGroup in the StoredPaymentChannelClientStates constructor
                 // since WalletAppKit will find it for us.
-                return ImmutableList.<WalletExtension>of(new StoredPaymentChannelClientStates(null));
+                return ImmutableList.<WalletExtension>of(new StoredPaymentChannelClientStates(appKit.wallet()));
             }
         };
-        appKit.connectToLocalHost();
         appKit.startAsync();
         appKit.awaitRunning();
         // We now have active network connections and a fully synced wallet.
@@ -94,7 +95,7 @@ public class ExamplePaymentChannelClient {
         //
         // Note that this may or may not actually construct a new channel. If an existing unclosed channel is found in
         // the wallet, then it'll re-use that one instead.
-        final int timeoutSecs = 15;
+        final int timeoutSecs = 600;
         final InetSocketAddress server = new InetSocketAddress(host, 4242);
 
         waitForSufficientBalance(channelSize);
